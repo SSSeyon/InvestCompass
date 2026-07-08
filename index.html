@@ -11,6 +11,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root, [data-theme="dark"] {
@@ -242,6 +244,62 @@ const keyOf = (m, sym) => m + ':' + sym.toUpperCase();
 const saveState = () => { LS.set('icx_settings', S.settings); LS.set('icx_portfolio', S.portfolio); LS.set('icx_watchlist', S.watchlist); };
 const saveCache = () => { LS.set('icx_quotes', C.quotes); LS.set('icx_series', C.series); LS.set('icx_ngx', C.ngx); LS.set('icx_ngxhist', C.ngxHist); LS.set('icx_fx', C.fx); LS.set('icx_pv', C.pv); };
 
+/* ============================== shared cache sync (Firebase) ==============================
+   Same free Firebase project as the Tracker app, separate top-level node — lets multiple
+   devices reuse each other's freshly-fetched market data instead of each burning its own
+   Twelve Data quota independently. Unauthenticated, open read/write (matches Tracker's rules). */
+const FB_CONFIG = {
+  apiKey: "AIzaSyAfxfEp8LT-f_zqiRr1Mbj7RghsxulNboY",
+  authDomain: "gen-lang-client-0371859680.firebaseapp.com",
+  databaseURL: "https://gen-lang-client-0371859680-default-rtdb.firebaseio.com",
+  projectId: "gen-lang-client-0371859680",
+  storageBucket: "gen-lang-client-0371859680.firebasestorage.app",
+  messagingSenderId: "847229528942",
+  appId: "1:847229528942:web:64de0f558049f382822f7f"
+};
+let fbMarketRef = null;
+let fbFirstSyncResolve;
+const fbFirstSync = new Promise(res => { fbFirstSyncResolve = res; });
+
+function mergeRemoteMarket(remote) {
+  if (!remote) return;
+  if (remote.fx && (!C.fx || remote.fx.ts > C.fx.ts)) C.fx = remote.fx;
+  if (remote.ngx && (!C.ngx || remote.ngx.ts > C.ngx.ts)) C.ngx = remote.ngx;
+  if (remote.ngxHist) {
+    // additive union: NGX history is authoritative daily closes, never conflicting — just merge dates
+    for (const d of Object.keys(remote.ngxHist)) C.ngxHist[d] = Object.assign({}, remote.ngxHist[d], C.ngxHist[d]);
+  }
+  if (remote.quotes) {
+    for (const k of Object.keys(remote.quotes)) {
+      const rq = remote.quotes[k], lq = C.quotes[k];
+      if (!lq || rq.ts > lq.ts) C.quotes[k] = rq;
+    }
+  }
+  if (remote.series) {
+    for (const k of Object.keys(remote.series)) {
+      const rs = remote.series[k], ls = C.series[k];
+      if (!ls || rs.ts > ls.ts) C.series[k] = rs;
+    }
+  }
+  saveCache();
+}
+function initFirebaseSync() {
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(FB_CONFIG);
+    const db = firebase.database();
+    fbMarketRef = db.ref('investcompass/market');
+    fbMarketRef.on('value', snap => {
+      mergeRemoteMarket(snap.val());
+      if (fbFirstSyncResolve) { fbFirstSyncResolve(); fbFirstSyncResolve = null; }
+      render();
+    }, () => { if (fbFirstSyncResolve) { fbFirstSyncResolve(); fbFirstSyncResolve = null; } });
+  } catch (e) { console.warn('firebase init failed', e); if (fbFirstSyncResolve) { fbFirstSyncResolve(); fbFirstSyncResolve = null; } }
+}
+function pushMarket(paths) { // paths: {'fx': {...}} or {'quotes/US:AAPL': {...}} — multi-location update
+  if (!fbMarketRef || !paths || !Object.keys(paths).length) return;
+  fbMarketRef.update(paths).catch(e => console.warn('firebase push failed', e));
+}
+
 /* ============================== status bar ============================== */
 function setStatus(txt, mode = '') { const b = $('#statusBar'); b.className = 'status-bar ' + mode; $('#statusText').textContent = txt; }
 
@@ -250,7 +308,7 @@ async function fetchFX(force) {
   if (!force && C.fx && Date.now() - C.fx.ts < 12 * 3600e3) return;
   const r = await fetch('https://open.er-api.com/v6/latest/USD');
   const j = await r.json();
-  if (j && j.result === 'success' && j.rates) { C.fx = { rates: j.rates, ts: Date.now() }; }
+  if (j && j.result === 'success' && j.rates) { C.fx = { rates: j.rates, ts: Date.now() }; pushMarket({ fx: C.fx }); }
 }
 function toBase(amount, ccy) {
   const base = S.settings.baseCcy;
@@ -277,14 +335,19 @@ async function fetchNGX(force) {
     date: (x.TradeDate || '').slice(0, 10)
   })).filter(x => x.sym), ts: Date.now() };
   // accumulate daily close history (builds technical-signal capability for NGX over time)
+  const touchedDates = new Set();
   for (const row of C.ngx.rows) {
     if (!row.date || row.close === null || row.close === undefined) continue;
     if (!C.ngxHist[row.date]) C.ngxHist[row.date] = {};
     C.ngxHist[row.date][row.sym] = row.close;
+    touchedDates.add(row.date);
   }
   // keep at most 400 days of history
   const dates = Object.keys(C.ngxHist).sort();
   while (dates.length > 400) delete C.ngxHist[dates.shift()];
+  const pushPaths = { ngx: C.ngx };
+  for (const d of touchedDates) if (C.ngxHist[d]) pushPaths['ngxHist/' + d] = C.ngxHist[d];
+  pushMarket(pushPaths);
 }
 function ngxRow(sym) { return C.ngx && C.ngx.rows.find(r => r.sym === sym.toUpperCase()); }
 function ngxSeries(sym) {
@@ -321,22 +384,27 @@ async function fetchQuotes(items, force) { // items: [{sym,market,exchange}]
     const q = C.quotes[keyOf(it.market, it.sym)];
     return force || !q || Date.now() - q.ts > 10 * 60e3;
   });
+  const pushPaths = {};
   for (const it of stale) {
     const params = { symbol: it.sym };
     if (it.exchange) params.exchange = it.exchange;
     try {
       setStatus('Quote: ' + it.sym + '…', 'loading');
       const j = await tdFetch('quote', params, 1);
-      C.quotes[keyOf(it.market, it.sym)] = {
+      const k = keyOf(it.market, it.sym);
+      C.quotes[k] = {
         price: parseFloat(j.close), prevClose: parseFloat(j.previous_close),
         pct: parseFloat(j.percent_change), name: j.name || it.sym, ccy: j.currency || (it.market === 'US' ? 'USD' : ''),
         hi52: j.fifty_two_week ? parseFloat(j.fifty_two_week.high) : null,
         lo52: j.fifty_two_week ? parseFloat(j.fifty_two_week.low) : null, ts: Date.now()
       };
+      pushPaths['quotes/' + k] = C.quotes[k];
     } catch (e) { if (e.message === 'NO_KEY') throw e; console.warn('quote fail', it.sym, e); }
   }
+  pushMarket(pushPaths);
 }
 async function fetchSeriesFor(items, force) {
+  const pushPaths = {};
   for (const it of items) {
     const k = keyOf(it.market, it.sym);
     const s = C.series[k];
@@ -348,9 +416,11 @@ async function fetchSeriesFor(items, force) {
       const j = await tdFetch('time_series', params, 1);
       if (j && Array.isArray(j.values)) {
         C.series[k] = { closes: j.values.map(v => ({ d: v.datetime, c: parseFloat(v.close), v: v.volume ? parseFloat(v.volume) : null })).reverse(), ts: Date.now() };
+        pushPaths['series/' + k] = C.series[k];
       }
     } catch (e) { if (e.message === 'NO_KEY') throw e; console.warn('series fail', it.sym, e); }
   }
+  pushMarket(pushPaths);
 }
 
 /* ============================== demo data ============================== */
@@ -946,8 +1016,11 @@ $('#tabs').addEventListener('click', e => {
 });
 function bindView() { /* view-level dynamic bindings happen via delegated listener above */ }
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
+initFirebaseSync();
 render();
-refreshAll(false);
+// wait briefly for the first Firebase snapshot (so other devices' cached data is used
+// instead of re-fetching), but don't block startup if offline or slow to connect
+Promise.race([fbFirstSync, sleep(3000)]).then(() => refreshAll(false));
 </script>
 </body>
 </html>
