@@ -160,7 +160,7 @@
   </div>
   <div class="header-right">
     <button class="nav-btn" id="refreshBtn">↻ Refresh</button>
-    <button class="nav-btn" id="themeBtn">Theme</button>
+    <button class="nav-btn" id="themeBtn" title="Toggle light/dark theme">☀</button>
   </div>
 </header>
 
@@ -170,6 +170,7 @@
     <button class="tab" data-tab="portfolio">Portfolio</button>
     <button class="tab" data-tab="watchlist">Watchlist</button>
     <button class="tab" data-tab="ngx">NGX Market</button>
+    <button class="tab" data-tab="us">US Stocks/ETFs</button>
     <button class="tab" data-tab="settings">Settings</button>
   </div>
 
@@ -188,6 +189,7 @@
 
 <script>
 "use strict";
+const APP_VERSION = 'v1.1.0'; // bump on every release (also bump CACHE in sw.js)
 /* ============================== utilities ============================== */
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -423,6 +425,34 @@ async function fetchSeriesFor(items, force) {
   pushMarket(pushPaths);
 }
 
+/* ============================== US market universe ==============================
+   Curated list of liquid, widely-held US ETFs and stocks scanned for independent
+   signals (not tied to your portfolio/watchlist). Kept modest so the free Twelve
+   Data tier covers it: first full scan ≈ 48 credits, then cached (quotes 1h,
+   series 24h) and shared across devices via Firebase. */
+const US_UNIVERSE = [
+  ['VOO','Vanguard S&P 500 ETF','ETF'], ['VTI','Vanguard Total US Market ETF','ETF'],
+  ['QQQ','Invesco QQQ (Nasdaq-100)','ETF'], ['SCHD','Schwab US Dividend Equity ETF','ETF'],
+  ['VUG','Vanguard Growth ETF','ETF'], ['VXUS','Vanguard Total International ETF','ETF'],
+  ['GLD','SPDR Gold Shares','ETF'], ['AGG','iShares Core US Aggregate Bond ETF','ETF'],
+  ['AAPL','Apple Inc','Technology'], ['MSFT','Microsoft Corp','Technology'],
+  ['NVDA','NVIDIA Corp','Technology'], ['GOOGL','Alphabet Inc','Technology'],
+  ['AMZN','Amazon.com Inc','Consumer'], ['META','Meta Platforms Inc','Technology'],
+  ['TSLA','Tesla Inc','Auto'], ['AVGO','Broadcom Inc','Technology'],
+  ['JPM','JPMorgan Chase & Co','Financial'], ['V','Visa Inc','Financial'],
+  ['LLY','Eli Lilly & Co','Healthcare'], ['UNH','UnitedHealth Group','Healthcare'],
+  ['XOM','Exxon Mobil Corp','Energy'], ['KO','Coca-Cola Co','Consumer'],
+  ['WMT','Walmart Inc','Consumer'], ['COST','Costco Wholesale Corp','Consumer']
+];
+async function scanUSUniverse(force) {
+  // universe quotes get a longer TTL (1h) than portfolio quotes (10min) to conserve credits
+  const maxAge = force ? 10 * 60e3 : 60 * 60e3;
+  const items = US_UNIVERSE.map(([sym]) => ({ sym, market: 'US' }));
+  const staleQ = items.filter(it => { const q = C.quotes[keyOf('US', it.sym)]; return !q || Date.now() - q.ts > maxAge; });
+  if (staleQ.length) { await fetchQuotes(staleQ, true); render(); }
+  await fetchSeriesFor(items, false); // 24h TTL inside
+}
+
 /* ============================== demo data ============================== */
 const DEMO_NGX = [
   ['DANGCEM','Dangote Cement','INDUSTRIAL GOODS',478.8],['MTNN','MTN Nigeria','ICT',389],['AIRTELAFRI','Airtel Africa','ICT',2185],
@@ -461,7 +491,9 @@ function loadDemoData() {
     const ser = demoSeries(sym, px);
     for (const pt of ser) { if (!C.ngxHist[pt.d]) C.ngxHist[pt.d] = {}; C.ngxHist[pt.d][sym] = pt.c; }
   }
-  for (const [sym, name, px] of DEMO_US) {
+  const demoPx = Object.fromEntries(DEMO_US.map(x => [x[0], x[2]]));
+  for (const [sym, name] of US_UNIVERSE) {
+    const px = demoPx[sym] || +(30 + mulberry32(hashStr(sym))() * 600).toFixed(2);
     C.quotes[keyOf('US', sym)] = { price: px, prevClose: +(px * 0.995).toFixed(2), pct: +((mulberry32(hashStr(sym + day))() - 0.45) * 4).toFixed(2), name, ccy: 'USD', hi52: +(px * 1.12).toFixed(2), lo52: +(px * 0.7).toFixed(2), ts: Date.now() };
     C.series[keyOf('US', sym)] = { closes: demoSeries(sym, px), ts: Date.now() };
   }
@@ -628,6 +660,19 @@ function buildRecommendations() {
         body: 'You already own it. If your long-term conviction is unchanged, an extra dollar-cost-averaging tranche at oversold levels historically improves average entry.' });
     }
   }
+  // 4b. independent US market scan — opportunities beyond what you already hold/watch
+  const uniHits = [];
+  for (const [sym, name] of US_UNIVERSE) {
+    const k = keyOf('US', sym);
+    if (seen.has(k)) continue;
+    const sig = computeSignal('US', sym);
+    if (sig.label === 'bull') uniHits.push({ sym, name, sig });
+  }
+  uniHits.sort((a, b) => b.sig.score - a.sig.score);
+  for (const u of uniHits.slice(0, 3)) {
+    recs.push({ sev: 'opportunity', tag: 'US Scan', title: esc(u.sym) + ' — bullish setup (+' + u.sig.score + ')',
+      body: '<b>' + esc(u.name) + '</b>: ' + u.sig.reasons.slice(0, 3).map(esc).join(' · ') + '. Independent pick from the US market scan — not in your portfolio or watchlist. Research fundamentals before buying.' });
+  }
   // 5. NGX market breadth note
   if (C.ngx && C.ngx.rows.length) {
     const adv = C.ngx.rows.filter(r => (r.pct || 0) > 0).length;
@@ -658,9 +703,10 @@ function render() {
   else if (activeTab === 'portfolio') v.innerHTML = renderPortfolio();
   else if (activeTab === 'watchlist') v.innerHTML = renderWatchlist();
   else if (activeTab === 'ngx') v.innerHTML = renderNGX();
+  else if (activeTab === 'us') v.innerHTML = renderUS();
   else if (activeTab === 'settings') v.innerHTML = renderSettings();
   bindView();
-  $('#footTs').textContent = 'NGX ' + (C.ngx ? ago(C.ngx.ts) : '—') + ' · FX ' + (C.fx ? ago(C.fx.ts) : '—');
+  $('#footTs').textContent = APP_VERSION + ' · NGX ' + (C.ngx ? ago(C.ngx.ts) : '—') + ' · FX ' + (C.fx ? ago(C.fx.ts) : '—');
 }
 function renderDashboard() {
   const t = portfolioTotals();
@@ -793,6 +839,37 @@ function renderNGX() {
   h += '</tbody></table></div>';
   return h;
 }
+function renderUS() {
+  let h = '';
+  if (!S.settings.demo && !S.settings.tdKey)
+    h += '<div class="disclaimer"><strong>API key needed</strong> — add a free Twelve Data key in Settings to load live US quotes and signals for this list.</div>';
+  const enriched = US_UNIVERSE.map(([sym, name, type]) => {
+    const q = C.quotes[keyOf('US', sym)];
+    const sig = computeSignal('US', sym);
+    const watched = S.watchlist.some(w => w.market === 'US' && w.sym === sym);
+    const held = S.portfolio.some(p => p.market === 'US' && p.sym === sym);
+    return { sym, name, type, q, sig, watched, held };
+  });
+  const tbl = (list, title) => {
+    let x = '<div class="section-header"><span class="section-title">' + title + '</span><span class="section-badge">' + list.length + '</span></div>';
+    x += '<div class="table-scroll"><table class="grid"><thead><tr><th>Symbol</th><th class="r">Price</th><th class="r">Day</th><th class="r">RSI</th><th class="r">Score</th><th>Signal</th><th></th></tr></thead><tbody>';
+    for (const e of list) {
+      x += '<tr><td><span class="ticker">' + esc(e.sym) + '</span>' + (e.held ? ' <span class="badge mkt">HELD</span>' : '') + '<span class="co-name">' + esc(e.name) + '</span></td>';
+      x += '<td class="r">' + (e.q ? fmtMoney(e.q.price, 'USD') : '<span class="mini">—</span>') + '</td>';
+      x += '<td class="r ' + pctClass(e.q ? e.q.pct : null) + '">' + (e.q ? fmtPct(e.q.pct) : '—') + '</td>';
+      x += '<td class="r">' + (e.sig.rsi === null ? '—' : e.sig.rsi.toFixed(0)) + '</td>';
+      x += '<td class="r">' + (e.sig.score > 0 ? '+' : '') + e.sig.score + '</td>';
+      x += '<td>' + badge(e.sig) + '</td>';
+      x += '<td class="r">' + (e.watched ? '<span class="mini" title="On watchlist">✓</span>' : '<button class="icon-btn" title="Add to watchlist" data-act="watch-us" data-sym="' + esc(e.sym) + '" data-name="' + esc(e.name) + '">＋</button>') + '</td></tr>';
+    }
+    return x + '</tbody></table></div>';
+  };
+  const bySc = (a, b) => b.sig.score - a.sig.score;
+  h += tbl(enriched.filter(e => e.type === 'ETF').sort(bySc), 'ETFs');
+  h += tbl(enriched.filter(e => e.type !== 'ETF').sort(bySc), 'Stocks');
+  h += '<div class="mini">Curated universe of liquid, widely-held names — scanned independently of your portfolio. Quotes cached 1h, history 24h (shared across your devices) to stay within the free API tier. Add ＋ to watchlist to track anything closely.</div>';
+  return h;
+}
 function renderSettings() {
   const st = S.settings, tg = st.targets;
   let h = '';
@@ -812,6 +889,9 @@ function renderSettings() {
   h += '<div class="controls-row"><button class="btn ghost" data-act="export">Export JSON</button><button class="btn ghost" data-act="import">Import JSON</button><button class="btn danger" data-act="wipe">Clear all data</button></div>';
   h += '<div class="settings-desc">Export includes portfolio, watchlist, settings and collected NGX history.</div></div>';
   h += '<div class="settings-block"><h3>Save</h3><button class="btn" data-act="save-settings">Save settings</button></div>';
+  h += '<div class="settings-block"><h3>App</h3>';
+  h += '<div class="settings-desc">Invest Compass <b>' + APP_VERSION + '</b>. Hard refresh clears the app cache and service worker, then reloads the latest version. Your portfolio, watchlist and settings are not touched.</div>';
+  h += '<div class="controls-row"><button class="btn ghost" data-act="hard-refresh">⟳ Hard refresh app</button></div></div>';
   return h;
 }
 
@@ -909,6 +989,21 @@ document.body.addEventListener('click', async e => {
       saveState(); setStatus(sym + ' added to watchlist', 'ok');
     } else setStatus(sym + ' already on watchlist', 'ok');
   }
+  else if (act === 'watch-us') {
+    const sym = btn.dataset.sym;
+    if (!S.watchlist.some(w => w.sym === sym && w.market === 'US')) {
+      S.watchlist.push({ id: uid(), sym, market: 'US', name: btn.dataset.name || '' });
+      saveState(); setStatus(sym + ' added to watchlist', 'ok'); render();
+    } else setStatus(sym + ' already on watchlist', 'ok');
+  }
+  else if (act === 'hard-refresh') {
+    setStatus('Hard refreshing…', 'loading');
+    try {
+      if ('serviceWorker' in navigator) { const regs = await navigator.serviceWorker.getRegistrations(); for (const r of regs) await r.unregister(); }
+      if (window.caches) { const keys = await caches.keys(); for (const k of keys) await caches.delete(k); }
+    } catch (err) { console.warn('hard refresh cleanup', err); }
+    location.reload();
+  }
   else if (act === 'save-settings') saveSettingsForm();
   else if (act === 'export') {
     const blob = new Blob([JSON.stringify({ settings: S.settings, portfolio: S.portfolio, watchlist: S.watchlist, ngxHist: C.ngxHist, pv: C.pv }, null, 2)], { type: 'application/json' });
@@ -990,6 +1085,9 @@ async function refreshAll(force) {
           else setStatus('Quote fetch issue: ' + e.message, 'error');
         }
       }
+      if (S.settings.tdKey) {
+        try { await scanUSUniverse(force); } catch (e) { if (e.message !== 'NO_KEY') console.warn('US universe scan', e); }
+      }
       const ok = $('#statusBar').classList.contains('error');
       if (!ok) setStatus('Data updated ' + new Date().toLocaleTimeString(), 'ok');
     }
@@ -1005,9 +1103,13 @@ async function refreshAll(force) {
 
 /* ============================== init ============================== */
 document.documentElement.dataset.theme = S.settings.theme || 'dark';
+function updateThemeBtn() { // show the mode a click switches TO: sun while dark, moon while light
+  $('#themeBtn').textContent = document.documentElement.dataset.theme === 'dark' ? '☀' : '☾';
+}
+updateThemeBtn();
 $('#themeBtn').addEventListener('click', () => {
   S.settings.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-  document.documentElement.dataset.theme = S.settings.theme; saveState();
+  document.documentElement.dataset.theme = S.settings.theme; saveState(); updateThemeBtn();
 });
 $('#refreshBtn').addEventListener('click', () => refreshAll(true));
 $('#tabs').addEventListener('click', e => {
