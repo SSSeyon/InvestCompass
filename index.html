@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#0a0e14" />
+  <meta name="theme-color" content="#0b0e1c" />
   <meta name="description" content="Invest Compass — personal portfolio tracker and market-signal assistant for NGX, US and global markets." />
   <title>Invest Compass</title>
   <link rel="manifest" href="manifest.json" />
@@ -16,33 +16,37 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root, [data-theme="dark"] {
-      --bg:#0a0e14; --surface:#111827; --surface2:#1a2333; --border:#1f2d3d;
-      --accent:#00ff9d; --red:#ff4d6a; --amber:#f59e0b; --purple:#818cf8; --blue:#38bdf8;
-      --muted:#7c8a9e; --text:#e2e8f0;
+      --bg:#0b0e1c; --bg2:#171238; --solid:#151830;
+      --surface:rgba(255,255,255,0.05); --surface2:rgba(255,255,255,0.09); --border:rgba(150,140,225,0.18);
+      --accent:#818cf8; --accent2:#a78bfa; --green:#34d399; --red:#fb7185; --amber:#fbbf24; --purple:#c4b5fd; --blue:#60a5fa;
+      --muted:#9891c4; --text:#ecebff;
+      --header-bg:rgba(11,14,28,0.72);
       --mono:'JetBrains Mono',monospace; --sans:'Inter',sans-serif;
     }
     [data-theme="light"] {
-      --bg:#f4f6f9; --surface:#ffffff; --surface2:#eef1f5; --border:#d1d9e0;
-      --accent:#00a86b; --red:#dc2626; --amber:#d97706; --purple:#6366f1; --blue:#0284c7;
+      --bg:#eef1f6; --bg2:#e7ecf5; --solid:#ffffff;
+      --surface:#ffffff; --surface2:#f3f6fb; --border:#e4e8f0;
+      --accent:#4f46e5; --accent2:#6366f1; --green:#16a34a; --red:#e11d48; --amber:#d97706; --purple:#7c3aed; --blue:#0ea5e9;
       --muted:#64748b; --text:#0f172a;
+      --header-bg:rgba(255,255,255,0.82);
     }
-    html,body { background:var(--bg); color:var(--text); font-family:var(--sans); min-height:100vh; overflow-x:hidden; transition:background 0.2s,color 0.2s; }
+    html,body { background:var(--bg); background-image:linear-gradient(165deg,var(--bg) 0%,var(--bg2) 100%); background-attachment:fixed; color:var(--text); font-family:var(--sans); min-height:100vh; overflow-x:hidden; transition:background 0.2s,color 0.2s; }
 
-    header { border-bottom:1px solid var(--border); padding:13px 24px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; background:var(--bg); z-index:100; gap:12px; flex-wrap:wrap; }
+    header { border-bottom:1px solid var(--border); padding:13px 24px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; background:var(--header-bg); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); z-index:100; gap:12px; flex-wrap:wrap; }
     .logo { display:flex; align-items:center; gap:10px; }
-    .logo-mark { width:28px; height:28px; border:2px solid var(--accent); border-radius:6px; display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--accent); font-family:var(--mono); font-size:14px; }
-    .logo-text { font-family:var(--mono); font-size:14px; font-weight:600; letter-spacing:0.08em; }
+    .logo-mark { width:28px; height:28px; border-radius:9px; background:linear-gradient(135deg,var(--accent),var(--accent2)); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:#fff; font-family:var(--mono); font-size:14px; }
+    .logo-text { font-family:var(--sans); font-size:14px; font-weight:600; letter-spacing:0.04em; }
     .logo-text span { color:var(--accent); }
     .header-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-    .nav-btn { font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:0.06em; padding:6px 14px; border-radius:4px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; transition:all 0.15s; white-space:nowrap; }
-    .nav-btn:hover { border-color:var(--accent); color:var(--accent); }
+    .nav-btn { font-family:var(--sans); font-size:12px; font-weight:500; padding:7px 14px; border-radius:20px; border:1px solid var(--border); background:var(--surface); color:var(--muted); cursor:pointer; transition:all 0.15s; white-space:nowrap; }
+    .nav-btn:hover { border-color:var(--accent); color:var(--text); }
 
     main { max-width:1080px; margin:0 auto; padding:24px 24px 90px; }
 
-    .market-tabs { display:flex; gap:2px; margin-bottom:22px; border-bottom:1px solid var(--border); overflow-x:auto; }
-    .tab { font-family:var(--mono); font-size:11px; font-weight:500; letter-spacing:0.07em; text-transform:uppercase; padding:9px 16px; border:none; background:transparent; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; transition:color 0.15s,border-color 0.15s; white-space:nowrap; }
-    .tab:hover { color:var(--text); }
-    .tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+    .market-tabs { display:flex; gap:6px; margin-bottom:22px; overflow-x:auto; padding-bottom:4px; }
+    .tab { font-family:var(--sans); font-size:12px; font-weight:500; padding:8px 16px; border:1px solid var(--border); background:var(--surface); color:var(--muted); cursor:pointer; border-radius:20px; white-space:nowrap; transition:all 0.15s; }
+    .tab:hover { color:var(--text); border-color:var(--accent); }
+    .tab.active { color:#fff; background:linear-gradient(135deg,var(--accent),var(--accent2)); border-color:transparent; }
 
     .status-bar { font-family:var(--mono); font-size:11px; color:var(--muted); margin-bottom:16px; min-height:18px; display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
     .status-bar .dot { width:6px; height:6px; border-radius:50%; background:var(--muted); flex-shrink:0; }
@@ -55,66 +59,70 @@
     .disclaimer strong { color:var(--amber); font-family:var(--mono); }
     .demo-banner { background:rgba(129,140,248,0.08); border:1px solid var(--purple); border-radius:5px; padding:9px 13px; font-size:11px; color:var(--purple); margin-bottom:16px; font-family:var(--mono); display:none; }
 
-    .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; margin-bottom:22px; }
-    .card { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:14px 16px; }
-    .card .k { font-family:var(--mono); font-size:9px; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); margin-bottom:7px; }
-    .card .v { font-family:var(--mono); font-size:19px; font-weight:600; }
-    .card .s { font-family:var(--mono); font-size:11px; margin-top:4px; color:var(--muted); }
-    .gain { color:var(--accent); } .loss { color:var(--red); } .warn { color:var(--amber); }
+    .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:24px; }
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:16px 18px; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+    .card .k { font-family:var(--sans); font-size:11px; color:var(--muted); margin-bottom:8px; }
+    .card .v { font-family:var(--mono); font-size:22px; font-weight:600; letter-spacing:-0.01em; }
+    .card .s { font-family:var(--sans); font-size:11px; margin-top:5px; color:var(--muted); }
+    .cards .card:first-child { background:linear-gradient(135deg,rgba(129,140,248,0.18),rgba(167,139,250,0.05)); border-color:rgba(129,140,248,0.35); box-shadow:0 8px 40px -16px rgba(129,140,248,0.6); }
+    .cards .card:first-child .v { font-size:30px; }
+    .gain { color:var(--green); } .loss { color:var(--red); } .warn { color:var(--amber); }
 
     .section-header { display:flex; align-items:baseline; justify-content:space-between; margin:26px 0 12px; }
-    .section-title { font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); }
-    .section-badge { font-family:var(--mono); font-size:10px; color:var(--accent); }
+    .section-title { font-family:var(--sans); font-size:13px; font-weight:500; color:var(--text); }
+    .section-badge { font-family:var(--mono); font-size:11px; color:var(--accent); }
 
-    table.grid { width:100%; border-collapse:collapse; font-family:var(--mono); margin-bottom:14px; }
+    table.grid { width:100%; border-collapse:collapse; font-family:var(--mono); margin-bottom:2px; }
     table.grid thead tr { border-bottom:1px solid var(--border); }
-    table.grid th { font-size:9px; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); padding:7px 10px; text-align:left; font-weight:500; white-space:nowrap; }
+    table.grid th { font-size:10px; letter-spacing:0.02em; color:var(--muted); padding:9px 12px; text-align:left; font-weight:500; white-space:nowrap; font-family:var(--sans); }
     table.grid th.r, table.grid td.r { text-align:right; }
-    table.grid tbody tr { border-bottom:1px solid var(--border); transition:background 0.1s; }
+    table.grid tbody tr { border-bottom:1px solid var(--border); transition:background 0.12s; }
+    table.grid tbody tr:last-child { border-bottom:none; }
     table.grid tbody tr:hover { background:var(--surface2); }
-    table.grid td { padding:10px; font-size:12px; white-space:nowrap; }
-    .ticker { font-weight:600; font-size:13px; }
-    .co-name { font-size:10px; color:var(--muted); display:block; margin-top:1px; max-width:180px; overflow:hidden; text-overflow:ellipsis; }
-    .mini { font-size:10px; color:var(--muted); }
-    .empty-note { font-family:var(--mono); font-size:11px; color:var(--muted); padding:18px 4px; }
+    table.grid td { padding:11px 12px; font-size:12px; white-space:nowrap; }
+    .ticker { font-weight:600; font-size:13px; font-family:var(--sans); }
+    .co-name { font-size:10px; color:var(--muted); display:block; margin-top:1px; max-width:180px; overflow:hidden; text-overflow:ellipsis; font-family:var(--sans); }
+    .mini { font-size:10px; color:var(--muted); font-family:var(--sans); }
+    .empty-note { font-family:var(--sans); font-size:12px; color:var(--muted); padding:20px 4px; }
 
-    .badge { font-family:var(--mono); font-size:9px; text-transform:uppercase; letter-spacing:0.06em; padding:3px 8px; border-radius:3px; border:1px solid var(--border); color:var(--muted); display:inline-block; }
-    .badge.bull { border-color:var(--accent); color:var(--accent); }
-    .badge.lean-bull { border-color:rgba(0,255,157,0.4); color:var(--accent); opacity:0.8; }
+    .badge { font-family:var(--sans); font-size:10px; font-weight:500; padding:3px 9px; border-radius:20px; border:1px solid var(--border); color:var(--muted); display:inline-block; }
+    .badge.bull { border-color:var(--green); color:var(--green); }
+    .badge.lean-bull { border-color:var(--green); color:var(--green); opacity:0.7; }
     .badge.bear { border-color:var(--red); color:var(--red); }
-    .badge.lean-bear { border-color:rgba(255,77,106,0.4); color:var(--red); opacity:0.8; }
+    .badge.lean-bear { border-color:var(--red); color:var(--red); opacity:0.7; }
     .badge.neutral { }
-    .badge.mkt { border-color:var(--purple); color:var(--purple); }
+    .badge.mkt { border-color:var(--accent); color:var(--accent); }
 
-    .rec { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:12px 15px; margin-bottom:10px; border-left:3px solid var(--muted); }
-    .rec.opportunity { border-left-color:var(--accent); }
+    .rec { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px 16px; margin-bottom:10px; border-left:3px solid var(--muted); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+    .rec.opportunity { border-left-color:var(--green); }
     .rec.warning { border-left-color:var(--amber); }
     .rec.risk { border-left-color:var(--red); }
-    .rec .rec-title { font-family:var(--mono); font-size:12px; font-weight:600; margin-bottom:4px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .rec .rec-title { font-family:var(--sans); font-size:13px; font-weight:500; margin-bottom:4px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
     .rec .rec-body { font-size:12px; color:var(--muted); line-height:1.55; }
     .rec .rec-body b { color:var(--text); font-weight:600; }
 
     .reasons { font-size:10px; color:var(--muted); line-height:1.6; margin-top:3px; }
     .reasons li { margin-left:14px; }
 
-    .alloc-wrap { display:flex; gap:24px; align-items:center; flex-wrap:wrap; background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:16px; margin-bottom:14px; }
+    .alloc-wrap { display:flex; gap:24px; align-items:center; flex-wrap:wrap; background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:18px; margin-bottom:14px; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
     .alloc-legend { font-family:var(--mono); font-size:11px; display:flex; flex-direction:column; gap:7px; }
     .alloc-legend .row { display:flex; align-items:center; gap:8px; }
     .sw { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
     .drift-note { font-size:10px; color:var(--muted); margin-left:18px; }
 
     .controls-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
-    .btn { background:var(--accent); color:#0a0e14; border:none; font-family:var(--mono); font-size:11px; font-weight:600; letter-spacing:0.07em; text-transform:uppercase; padding:9px 18px; border-radius:5px; cursor:pointer; transition:opacity 0.15s; }
-    .btn:hover { opacity:0.88; }
+    .btn { background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; border:none; font-family:var(--sans); font-size:12px; font-weight:500; padding:10px 18px; border-radius:10px; cursor:pointer; transition:opacity 0.15s,transform 0.1s; }
+    .btn:hover { opacity:0.9; }
+    .btn:active { transform:scale(0.98); }
     .btn.ghost { background:transparent; border:1px solid var(--border); color:var(--muted); font-weight:500; }
-    .btn.ghost:hover { border-color:var(--accent); color:var(--accent); opacity:1; }
+    .btn.ghost:hover { border-color:var(--accent); color:var(--text); opacity:1; }
     .btn.danger { background:transparent; border:1px solid var(--red); color:var(--red); }
     .icon-btn { background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:13px; padding:2px 6px; font-family:var(--mono); }
     .icon-btn:hover { color:var(--accent); }
     .icon-btn.del:hover { color:var(--red); }
 
     input[type="text"], input[type="number"], input[type="password"], select {
-      background:var(--surface); border:1px solid var(--border); color:var(--text); font-family:var(--mono); font-size:12px; padding:9px 12px; border-radius:5px; outline:none; transition:border-color 0.15s; width:100%;
+      background:var(--surface2); border:1px solid var(--border); color:var(--text); font-family:var(--sans); font-size:13px; padding:10px 12px; border-radius:10px; outline:none; transition:border-color 0.15s; width:100%;
     }
     input:focus, select:focus { border-color:var(--accent); }
     .field { display:flex; flex-direction:column; gap:5px; margin-bottom:12px; }
@@ -125,14 +133,24 @@
 
     .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:flex-start; justify-content:center; z-index:200; padding:40px 16px; overflow-y:auto; }
     .modal-overlay.open { display:flex; }
-    .modal { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:22px; width:100%; max-width:420px; }
-    .modal h3 { font-family:var(--mono); font-size:13px; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:16px; }
+    .modal { background:var(--solid); border:1px solid var(--border); border-radius:18px; padding:24px; width:100%; max-width:420px; }
+    .modal h3 { font-family:var(--sans); font-size:15px; font-weight:500; margin-bottom:16px; color:var(--text); }
     .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:6px; }
 
-    .settings-block { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:18px; margin-bottom:16px; max-width:560px; }
-    .settings-block h3 { font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:12px; color:var(--text); }
+    .settings-block { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:20px; margin-bottom:16px; max-width:560px; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+    .settings-block h3 { font-family:var(--sans); font-size:14px; font-weight:500; margin-bottom:14px; color:var(--text); }
     .settings-desc { font-size:11px; color:var(--muted); line-height:1.6; margin-bottom:12px; }
     .settings-desc a { color:var(--blue); }
+    .key-list { display:flex; flex-direction:column; gap:8px; }
+    .key-row { display:flex; align-items:center; gap:12px; padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:var(--surface2); cursor:pointer; transition:border-color 0.15s; }
+    .key-row:hover { border-color:var(--accent); }
+    .key-row.active { border-color:var(--accent); background:rgba(129,140,248,0.12); }
+    .key-radio { width:16px; height:16px; border-radius:50%; border:2px solid var(--muted); flex-shrink:0; }
+    .key-row.active .key-radio { border-color:var(--accent); background:var(--accent); box-shadow:inset 0 0 0 2px var(--solid); }
+    .key-info { flex:1; display:flex; flex-direction:column; gap:2px; min-width:0; }
+    .key-label { font-size:13px; color:var(--text); font-weight:500; }
+    .key-mask { font-family:var(--mono); font-size:11px; color:var(--muted); }
+    .key-badge { font-family:var(--sans); font-size:9px; font-weight:500; color:var(--accent); border:1px solid var(--accent); border-radius:10px; padding:1px 7px; margin-left:6px; text-transform:uppercase; letter-spacing:0.04em; }
 
     .breadth-bar { display:flex; height:10px; border-radius:5px; overflow:hidden; margin:8px 0 6px; border:1px solid var(--border); }
     .breadth-bar div { height:100%; }
@@ -149,7 +167,7 @@
 
     footer { position:fixed; bottom:0; left:0; right:0; background:var(--bg); border-top:1px solid var(--border); padding:8px 24px; font-family:var(--mono); font-size:10px; color:var(--muted); display:flex; justify-content:space-between; gap:12px; z-index:90; }
     @media (max-width:640px){ footer { font-size:9px; padding:7px 12px; } main { padding:18px 12px 90px; } header { padding:11px 12px; } }
-    .table-scroll { overflow-x:auto; }
+    .table-scroll { overflow-x:auto; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:2px 8px; margin-bottom:14px; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
   </style>
 </head>
 <body>
@@ -189,7 +207,7 @@
 
 <script>
 "use strict";
-const APP_VERSION = 'v1.1.0'; // bump on every release (also bump CACHE in sw.js)
+const APP_VERSION = 'v1.2.0'; // bump on every release (also bump CACHE in sw.js)
 /* ============================== utilities ============================== */
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -225,13 +243,30 @@ function mulberry32(seed) { return function () { seed |= 0; seed = seed + 0x6D2B
 function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
 
 /* ============================== state ============================== */
-const DEFAULT_SETTINGS = { tdKey: '', baseCcy: 'NGN', targets: { us: 40, ngx: 30, global: 10, cash: 20 }, demo: true, theme: 'dark' };
+const DEFAULT_SETTINGS = { tdKeys: [], activeKeyId: '', baseCcy: 'NGN', targets: { us: 40, ngx: 30, global: 10, cash: 20 }, demo: true, theme: 'dark' };
 let S = {
   settings: Object.assign({}, DEFAULT_SETTINGS, LS.get('icx_settings', {})),
   portfolio: LS.get('icx_portfolio', []),   // {id,sym,market:US|NGX|GLOBAL|CASH,exchange,name,qty,cost,ccy}
   watchlist: LS.get('icx_watchlist', [])    // {id,sym,market,exchange,name}
 };
 S.settings.targets = Object.assign({}, DEFAULT_SETTINGS.targets, S.settings.targets);
+// API keys: allow storing several Twelve Data keys and choosing which one is active
+function normalizeKeys() {
+  if (!Array.isArray(S.settings.tdKeys)) S.settings.tdKeys = [];
+  if (S.settings.tdKey && !S.settings.tdKeys.length) { // migrate legacy single key
+    S.settings.tdKeys = [{ id: uid(), label: 'Key 1', key: S.settings.tdKey }];
+    S.settings.activeKeyId = S.settings.tdKeys[0].id;
+  }
+  delete S.settings.tdKey;
+  if ((!S.settings.activeKeyId || !S.settings.tdKeys.some(k => k.id === S.settings.activeKeyId)) && S.settings.tdKeys.length)
+    S.settings.activeKeyId = S.settings.tdKeys[0].id;
+}
+function activeTdKey() {
+  const ks = S.settings.tdKeys || [];
+  const a = ks.find(k => k.id === S.settings.activeKeyId) || ks[0];
+  return a ? a.key : '';
+}
+normalizeKeys();
 let C = { // cached market data
   quotes: LS.get('icx_quotes', {}),    // key -> {price,prevClose,pct,name,ccy,ts,hi52,lo52}
   series: LS.get('icx_series', {}),    // key -> {closes:[{d,c,v}...old->new], ts}
@@ -373,9 +408,10 @@ async function tdGate(n) {
   }
 }
 async function tdFetch(path, params, credits) {
-  if (!S.settings.tdKey) throw new Error('NO_KEY');
+  const key = activeTdKey();
+  if (!key) throw new Error('NO_KEY');
   await tdGate(credits);
-  const q = new URLSearchParams(Object.assign({}, params, { apikey: S.settings.tdKey }));
+  const q = new URLSearchParams(Object.assign({}, params, { apikey: key }));
   const r = await fetch('https://api.twelvedata.com/' + path + '?' + q.toString());
   const j = await r.json();
   if (j && j.status === 'error') throw new Error('TwelveData: ' + (j.message || j.code));
@@ -685,7 +721,7 @@ function buildRecommendations() {
   }
   // 6. stale data
   if (!S.settings.demo) {
-    if (!S.settings.tdKey && (S.portfolio.some(p => p.market === 'US' || p.market === 'GLOBAL') || S.watchlist.some(w => w.market !== 'NGX')))
+    if (!activeTdKey() && (S.portfolio.some(p => p.market === 'US' || p.market === 'GLOBAL') || S.watchlist.some(w => w.market !== 'NGX')))
       recs.push({ sev: 'warning', tag: 'Setup', title: 'US/global quotes need a free API key', body: 'Add a free Twelve Data key in Settings to price your US and global positions.' });
   }
   const sevRank = { risk: 0, warning: 1, opportunity: 2, info: 3 };
@@ -841,7 +877,7 @@ function renderNGX() {
 }
 function renderUS() {
   let h = '';
-  if (!S.settings.demo && !S.settings.tdKey)
+  if (!S.settings.demo && !activeTdKey())
     h += '<div class="disclaimer"><strong>API key needed</strong> — add a free Twelve Data key in Settings to load live US quotes and signals for this list.</div>';
   const enriched = US_UNIVERSE.map(([sym, name, type]) => {
     const q = C.quotes[keyOf('US', sym)];
@@ -875,7 +911,22 @@ function renderSettings() {
   let h = '';
   h += '<div class="settings-block"><h3>Data sources</h3>';
   h += '<div class="settings-desc">NGX prices come free from the official Nigerian Exchange feed (no key needed). US &amp; global quotes use <a href="https://twelvedata.com/pricing" target="_blank" rel="noopener">Twelve Data</a> — the free tier (~800 requests/day, 8/min) is plenty for a personal portfolio. FX rates come from open.er-api.com.</div>';
-  h += '<div class="field"><label>Twelve Data API key</label><input type="password" id="setTdKey" value="' + esc(st.tdKey) + '" placeholder="paste free API key" /><span class="hint">Stored only in this browser (localStorage).</span></div>';
+  h += '<div class="field"><label>Twelve Data API keys</label>';
+  if (!st.tdKeys.length) h += '<div class="hint">No keys yet. Add one to price US &amp; global symbols.</div>';
+  else {
+    h += '<div class="key-list">';
+    for (const k of st.tdKeys) {
+      const isActive = k.id === st.activeKeyId;
+      const masked = k.key.length > 4 ? '••••' + esc(k.key.slice(-4)) : '••••';
+      h += '<div class="key-row' + (isActive ? ' active' : '') + '" data-act="set-active-key" data-id="' + esc(k.id) + '">'
+        + '<span class="key-radio"></span>'
+        + '<div class="key-info"><span class="key-label">' + esc(k.label) + (isActive ? '<span class="key-badge">active</span>' : '') + '</span><span class="key-mask">' + masked + '</span></div>'
+        + '<button class="icon-btn del" data-act="del-key" data-id="' + esc(k.id) + '">✕</button></div>';
+    }
+    h += '</div>';
+  }
+  h += '<button class="btn ghost" data-act="add-key" style="margin-top:10px">+ Add API key</button>';
+  h += '<span class="hint" style="display:block;margin-top:8px">Keys are stored only in this browser. The active key is used for all US/global quotes — switch if one hits its daily limit.</span></div>';
   h += '<div class="toggle-row"><span class="lbl">Demo mode (synthetic data, no network)</span><label class="switch"><input type="checkbox" id="setDemo" ' + (st.demo ? 'checked' : '') + '/><span class="slider-el"></span></label></div>';
   h += '</div>';
   h += '<div class="settings-block"><h3>Portfolio preferences</h3>';
@@ -927,6 +978,14 @@ function cashModal() {
     '<div class="field-row"><div class="field"><label>Amount</label><input type="number" id="mQty" min="0" step="any"/></div>' +
     '<div class="field"><label>Currency</label><select id="mCcy">' + ['NGN', 'USD', 'EUR', 'GBP'].map(c => '<option>' + c + '</option>').join('') + '</select></div></div>' +
     '<div class="modal-actions"><button class="btn ghost" data-act="close-modal">Cancel</button><button class="btn" data-act="save-cash">Save</button></div>'
+  );
+}
+function apiKeyModal() {
+  openModal(
+    '<h3>Add API key</h3>' +
+    '<div class="field"><label>Label</label><input type="text" id="mKeyLabel" placeholder="e.g. Personal, Backup"/></div>' +
+    '<div class="field"><label>Twelve Data API key</label><input type="text" id="mKeyVal" placeholder="paste free API key"/></div>' +
+    '<div class="modal-actions"><button class="btn ghost" data-act="close-modal">Cancel</button><button class="btn" data-act="save-key">Add</button></div>'
   );
 }
 function watchModal() {
@@ -1004,6 +1063,31 @@ document.body.addEventListener('click', async e => {
     } catch (err) { console.warn('hard refresh cleanup', err); }
     location.reload();
   }
+  else if (act === 'add-key') apiKeyModal();
+  else if (act === 'save-key') {
+    const key = $('#mKeyVal').value.trim();
+    const label = $('#mKeyLabel').value.trim() || ('Key ' + (S.settings.tdKeys.length + 1));
+    if (!key) { alert('Paste an API key.'); return; }
+    const id = uid();
+    S.settings.tdKeys.push({ id, label, key });
+    if (!S.settings.activeKeyId) S.settings.activeKeyId = id;
+    saveState(); closeModal(); render(); setStatus('API key added', 'ok');
+    if (!S.settings.demo) refreshAll(false);
+  }
+  else if (act === 'set-active-key') {
+    if (S.settings.activeKeyId === btn.dataset.id) return;
+    S.settings.activeKeyId = btn.dataset.id;
+    saveState(); render(); setStatus('Active key switched', 'ok');
+    if (!S.settings.demo) refreshAll(false);
+  }
+  else if (act === 'del-key') {
+    const k = S.settings.tdKeys.find(x => x.id === btn.dataset.id);
+    if (k && confirm('Delete API key "' + k.label + '"?')) {
+      S.settings.tdKeys = S.settings.tdKeys.filter(x => x.id !== btn.dataset.id);
+      if (S.settings.activeKeyId === btn.dataset.id) S.settings.activeKeyId = S.settings.tdKeys[0] ? S.settings.tdKeys[0].id : '';
+      saveState(); render(); setStatus('API key removed', 'ok');
+    }
+  }
   else if (act === 'save-settings') saveSettingsForm();
   else if (act === 'export') {
     const blob = new Blob([JSON.stringify({ settings: S.settings, portfolio: S.portfolio, watchlist: S.watchlist, ngxHist: C.ngxHist, pv: C.pv }, null, 2)], { type: 'application/json' });
@@ -1018,6 +1102,8 @@ document.body.addEventListener('click', async e => {
         const j = safeParse(rd.result, null);
         if (!j || !Array.isArray(j.portfolio)) { alert('Invalid backup file.'); return; }
         S.settings = Object.assign({}, DEFAULT_SETTINGS, j.settings || {});
+        S.settings.targets = Object.assign({}, DEFAULT_SETTINGS.targets, S.settings.targets);
+        normalizeKeys();
         S.portfolio = j.portfolio; S.watchlist = j.watchlist || [];
         if (j.ngxHist) C.ngxHist = j.ngxHist;
         if (j.pv) C.pv = j.pv;
@@ -1036,7 +1122,6 @@ document.body.addEventListener('click', async e => {
 });
 function saveSettingsForm() {
   const st = S.settings;
-  st.tdKey = $('#setTdKey').value.trim();
   st.baseCcy = $('#setBase').value;
   const wasDemo = st.demo;
   st.demo = $('#setDemo').checked;
@@ -1085,7 +1170,7 @@ async function refreshAll(force) {
           else setStatus('Quote fetch issue: ' + e.message, 'error');
         }
       }
-      if (S.settings.tdKey) {
+      if (activeTdKey()) {
         try { await scanUSUniverse(force); } catch (e) { if (e.message !== 'NO_KEY') console.warn('US universe scan', e); }
       }
       const ok = $('#statusBar').classList.contains('error');
