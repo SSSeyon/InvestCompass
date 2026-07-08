@@ -165,9 +165,14 @@
     .switch input:checked + .slider-el { background:rgba(0,255,157,0.15); border-color:var(--accent); }
     .switch input:checked + .slider-el::before { transform:translateX(17px); background:var(--accent); }
 
-    footer { position:fixed; bottom:0; left:0; right:0; background:var(--bg); border-top:1px solid var(--border); padding:8px 24px; font-family:var(--mono); font-size:10px; color:var(--muted); display:flex; justify-content:space-between; gap:12px; z-index:90; }
-    @media (max-width:640px){ footer { font-size:9px; padding:7px 12px; } main { padding:18px 12px 90px; } header { padding:11px 12px; } }
+    .app-meta { font-family:var(--mono); font-size:10px; color:var(--muted); margin-bottom:16px; line-height:1.6; }
+    @media (max-width:640px){ main { padding:18px 12px 110px; } header { padding:11px 12px; } }
     .table-scroll { overflow-x:auto; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:2px 8px; margin-bottom:14px; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+
+    .bnav { position:fixed; bottom:14px; left:50%; transform:translateX(-50%); height:60px; background:var(--header-bg); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border:1px solid var(--border); border-radius:36px; z-index:100; display:flex; align-items:center; padding:5px 6px; gap:2px; box-shadow:0 12px 32px -8px rgba(0,0,0,0.35); width:calc(100% - 28px); max-width:480px; }
+    .bn { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-family:var(--sans); font-size:10px; font-weight:500; color:var(--muted); cursor:pointer; user-select:none; padding:7px 2px; border-radius:26px; transition:all 0.18s cubic-bezier(0.34,1.56,0.64,1); }
+    .bn.active { color:#fff; background:linear-gradient(135deg,var(--accent),var(--accent2)); }
+    .bn-icon { font-size:16px; line-height:1; }
   </style>
 </head>
 <body>
@@ -183,31 +188,26 @@
 </header>
 
 <main>
-  <div class="market-tabs" id="tabs">
-    <button class="tab active" data-tab="dashboard">Dashboard</button>
-    <button class="tab" data-tab="portfolio">Portfolio</button>
-    <button class="tab" data-tab="watchlist">Watchlist</button>
-    <button class="tab" data-tab="ngx">NGX Market</button>
-    <button class="tab" data-tab="us">US Stocks/ETFs</button>
-    <button class="tab" data-tab="settings">Settings</button>
-  </div>
-
   <div class="status-bar" id="statusBar"><span class="dot"></span><span id="statusText">Ready</span></div>
   <div class="demo-banner" id="demoBanner">DEMO MODE — showing synthetic sample data. Turn off in Settings to use live market data.</div>
 
   <div id="view"></div>
+  <div class="app-meta" id="appMeta"></div>
 </main>
 
-<footer>
-  <span>⚠ Informational only — not financial advice. Signals are mechanical rules on historical data; verify before investing.</span>
-  <span id="footTs"></span>
-</footer>
+<nav class="bnav" id="bnav">
+  <div class="bn active" data-tab="dashboard"><div class="bn-icon">⌂</div>Home</div>
+  <div class="bn" data-tab="portfolio"><div class="bn-icon">◆</div>Portfolio</div>
+  <div class="bn" data-tab="watchlist"><div class="bn-icon">☆</div>Watchlist</div>
+  <div class="bn" data-tab="markets"><div class="bn-icon">◱</div>Markets</div>
+  <div class="bn" data-tab="settings"><div class="bn-icon">⚙</div>Settings</div>
+</nav>
 
 <div class="modal-overlay" id="modalOverlay"><div class="modal" id="modalBox"></div></div>
 
 <script>
 "use strict";
-const APP_VERSION = 'v1.2.0'; // bump on every release (also bump CACHE in sw.js)
+const APP_VERSION = 'v1.3.0'; // bump on every release (also bump CACHE in sw.js)
 /* ============================== utilities ============================== */
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -243,7 +243,7 @@ function mulberry32(seed) { return function () { seed |= 0; seed = seed + 0x6D2B
 function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
 
 /* ============================== state ============================== */
-const DEFAULT_SETTINGS = { tdKeys: [], activeKeyId: '', baseCcy: 'NGN', targets: { us: 40, ngx: 30, global: 10, cash: 20 }, demo: true, theme: 'dark' };
+const DEFAULT_SETTINGS = { tdKeys: [], activeKeyId: '', keysTs: 0, baseCcy: 'NGN', targets: { us: 40, ngx: 30, global: 10, cash: 20 }, demo: true, theme: 'dark' };
 let S = {
   settings: Object.assign({}, DEFAULT_SETTINGS, LS.get('icx_settings', {})),
   portfolio: LS.get('icx_portfolio', []),   // {id,sym,market:US|NGX|GLOBAL|CASH,exchange,name,qty,cost,ccy}
@@ -276,6 +276,7 @@ let C = { // cached market data
   pv: LS.get('icx_pv', {})             // date -> portfolio value in base ccy
 };
 let activeTab = 'dashboard';
+let marketSub = LS.get('icx_marketSub', 'ngx');
 let refreshing = false;
 const keyOf = (m, sym) => m + ':' + sym.toUpperCase();
 const saveState = () => { LS.set('icx_settings', S.settings); LS.set('icx_portfolio', S.portfolio); LS.set('icx_watchlist', S.watchlist); };
@@ -295,8 +296,26 @@ const FB_CONFIG = {
   appId: "1:847229528942:web:64de0f558049f382822f7f"
 };
 let fbMarketRef = null;
+let fbKeysRef = null;
 let fbFirstSyncResolve;
 const fbFirstSync = new Promise(res => { fbFirstSyncResolve = res; });
+
+/* API keys sync across devices — separate node from market cache since it's small,
+   user-owned data (last-write-wins by timestamp, not an additive merge). */
+function mergeRemoteKeys(remote) {
+  if (!remote || !Array.isArray(remote.tdKeys)) return;
+  if (!remote.ts || remote.ts <= (S.settings.keysTs || 0)) return; // local copy is same or newer
+  S.settings.tdKeys = remote.tdKeys;
+  S.settings.activeKeyId = remote.activeKeyId || (remote.tdKeys[0] && remote.tdKeys[0].id) || '';
+  S.settings.keysTs = remote.ts;
+  saveState(); render();
+}
+function pushKeys() {
+  S.settings.keysTs = Date.now();
+  saveState();
+  if (!fbKeysRef) return;
+  fbKeysRef.set({ tdKeys: S.settings.tdKeys, activeKeyId: S.settings.activeKeyId, ts: S.settings.keysTs }).catch(e => console.warn('key sync push failed', e));
+}
 
 function mergeRemoteMarket(remote) {
   if (!remote) return;
@@ -330,6 +349,8 @@ function initFirebaseSync() {
       if (fbFirstSyncResolve) { fbFirstSyncResolve(); fbFirstSyncResolve = null; }
       render();
     }, () => { if (fbFirstSyncResolve) { fbFirstSyncResolve(); fbFirstSyncResolve = null; } });
+    fbKeysRef = db.ref('investcompass/keys');
+    fbKeysRef.on('value', snap => mergeRemoteKeys(snap.val()));
   } catch (e) { console.warn('firebase init failed', e); if (fbFirstSyncResolve) { fbFirstSyncResolve(); fbFirstSyncResolve = null; } }
 }
 function pushMarket(paths) { // paths: {'fx': {...}} or {'quotes/US:AAPL': {...}} — multi-location update
@@ -733,16 +754,24 @@ function buildRecommendations() {
 function badge(sig) { return '<span class="badge ' + sig.label + '">' + esc(sig.text) + '</span>'; }
 function render() {
   $('#demoBanner').style.display = S.settings.demo ? 'block' : 'none';
-  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === activeTab));
+  document.querySelectorAll('.bn').forEach(t => t.classList.toggle('active', t.dataset.tab === activeTab));
   const v = $('#view');
   if (activeTab === 'dashboard') v.innerHTML = renderDashboard();
   else if (activeTab === 'portfolio') v.innerHTML = renderPortfolio();
   else if (activeTab === 'watchlist') v.innerHTML = renderWatchlist();
-  else if (activeTab === 'ngx') v.innerHTML = renderNGX();
-  else if (activeTab === 'us') v.innerHTML = renderUS();
+  else if (activeTab === 'markets') v.innerHTML = renderMarkets();
   else if (activeTab === 'settings') v.innerHTML = renderSettings();
   bindView();
-  $('#footTs').textContent = APP_VERSION + ' · NGX ' + (C.ngx ? ago(C.ngx.ts) : '—') + ' · FX ' + (C.fx ? ago(C.fx.ts) : '—');
+  $('#appMeta').innerHTML = '⚠ Informational only — not financial advice. Signals are mechanical rules on historical data; verify before investing.<br>'
+    + APP_VERSION + ' · NGX ' + (C.ngx ? ago(C.ngx.ts) : '—') + ' · FX ' + (C.fx ? ago(C.fx.ts) : '—');
+}
+function renderMarkets() {
+  let h = '<div class="market-tabs">';
+  h += '<button class="tab' + (marketSub === 'ngx' ? ' active' : '') + '" data-act="set-market-sub" data-sub="ngx">NGX Market</button>';
+  h += '<button class="tab' + (marketSub === 'us' ? ' active' : '') + '" data-act="set-market-sub" data-sub="us">US Stocks/ETFs</button>';
+  h += '</div>';
+  h += marketSub === 'us' ? renderUS() : renderNGX();
+  return h;
 }
 function renderDashboard() {
   const t = portfolioTotals();
@@ -818,6 +847,39 @@ function renderPortfolio() {
   }
   h += '</tbody></table></div>';
   h += '<div class="mini">Values converted to ' + esc(base) + ' at latest FX. Signals are mechanical (trend/RSI/momentum) — see Watchlist tab for reasons.</div>';
+  h += renderAttribution(t, base);
+  return h;
+}
+function performanceAttribution(t) {
+  const rows = [];
+  for (const p of S.portfolio) {
+    if (p.market === 'CASH') continue;
+    const v = positionValue(p);
+    if (v.base === null || isNaN(v.base)) continue;
+    const costB = toBase(p.cost * p.qty, p.ccy);
+    const pl = v.base - costB;
+    rows.push({ sym: p.sym, market: p.market, value: v.base, pl, plPct: costB > 0 ? pl / costB * 100 : null, contrib: t.costBase > 0 ? pl / t.costBase * 100 : 0 });
+  }
+  rows.sort((a, b) => b.contrib - a.contrib);
+  return rows;
+}
+function renderAttribution(t, base) {
+  const attr = performanceAttribution(t);
+  if (!attr.length) return '';
+  const maxAbs = Math.max(...attr.map(a => Math.abs(a.contrib)), 0.01);
+  let h = '<div class="section-header"><span class="section-title">Performance attribution</span><span class="section-badge">contribution to total return</span></div>';
+  h += '<div class="table-scroll"><table class="grid"><thead><tr><th>Asset</th><th class="r">Value</th><th class="r">P/L</th><th class="r">P/L %</th><th class="r">Contribution</th><th>Impact</th></tr></thead><tbody>';
+  for (const a of attr) {
+    const w = Math.min(100, Math.abs(a.contrib) / maxAbs * 100);
+    h += '<tr><td><span class="ticker">' + esc(a.sym) + '</span> <span class="badge mkt">' + esc(a.market) + '</span></td>';
+    h += '<td class="r">' + fmtMoney(a.value, base, true) + '</td>';
+    h += '<td class="r ' + pctClass(a.pl) + '">' + (a.pl >= 0 ? '+' : '') + fmtMoney(a.pl, base, true) + '</td>';
+    h += '<td class="r ' + pctClass(a.plPct) + '">' + (a.plPct === null ? '—' : fmtPct(a.plPct)) + '</td>';
+    h += '<td class="r ' + pctClass(a.contrib) + '">' + (a.contrib >= 0 ? '+' : '') + fmtN(a.contrib, 2) + 'pt</td>';
+    h += '<td><div style="height:6px;border-radius:3px;background:var(--surface2);overflow:hidden;width:80px"><div style="height:100%;width:' + w + '%;background:' + (a.contrib >= 0 ? 'var(--green)' : 'var(--red)') + '"></div></div></td></tr>';
+  }
+  h += '</tbody></table></div>';
+  h += '<div class="mini">Contribution = position P/L ÷ total portfolio cost basis, in percentage points. Contributions across all holdings sum to roughly your total portfolio return %.</div>';
   return h;
 }
 function renderWatchlist() {
@@ -1071,13 +1133,13 @@ document.body.addEventListener('click', async e => {
     const id = uid();
     S.settings.tdKeys.push({ id, label, key });
     if (!S.settings.activeKeyId) S.settings.activeKeyId = id;
-    saveState(); closeModal(); render(); setStatus('API key added', 'ok');
+    pushKeys(); closeModal(); render(); setStatus('API key added', 'ok');
     if (!S.settings.demo) refreshAll(false);
   }
   else if (act === 'set-active-key') {
     if (S.settings.activeKeyId === btn.dataset.id) return;
     S.settings.activeKeyId = btn.dataset.id;
-    saveState(); render(); setStatus('Active key switched', 'ok');
+    pushKeys(); render(); setStatus('Active key switched', 'ok');
     if (!S.settings.demo) refreshAll(false);
   }
   else if (act === 'del-key') {
@@ -1085,8 +1147,11 @@ document.body.addEventListener('click', async e => {
     if (k && confirm('Delete API key "' + k.label + '"?')) {
       S.settings.tdKeys = S.settings.tdKeys.filter(x => x.id !== btn.dataset.id);
       if (S.settings.activeKeyId === btn.dataset.id) S.settings.activeKeyId = S.settings.tdKeys[0] ? S.settings.tdKeys[0].id : '';
-      saveState(); render(); setStatus('API key removed', 'ok');
+      pushKeys(); render(); setStatus('API key removed', 'ok');
     }
+  }
+  else if (act === 'set-market-sub') {
+    marketSub = btn.dataset.sub; LS.set('icx_marketSub', marketSub); render();
   }
   else if (act === 'save-settings') saveSettingsForm();
   else if (act === 'export') {
@@ -1107,7 +1172,7 @@ document.body.addEventListener('click', async e => {
         S.portfolio = j.portfolio; S.watchlist = j.watchlist || [];
         if (j.ngxHist) C.ngxHist = j.ngxHist;
         if (j.pv) C.pv = j.pv;
-        saveState(); saveCache(); render(); setStatus('Backup imported', 'ok');
+        saveCache(); pushKeys(); render(); setStatus('Backup imported', 'ok');
       };
       rd.readAsText(f);
     };
@@ -1197,8 +1262,8 @@ $('#themeBtn').addEventListener('click', () => {
   document.documentElement.dataset.theme = S.settings.theme; saveState(); updateThemeBtn();
 });
 $('#refreshBtn').addEventListener('click', () => refreshAll(true));
-$('#tabs').addEventListener('click', e => {
-  const t = e.target.closest('.tab'); if (!t) return;
+$('#bnav').addEventListener('click', e => {
+  const t = e.target.closest('.bn'); if (!t) return;
   activeTab = t.dataset.tab; render();
 });
 function bindView() { /* view-level dynamic bindings happen via delegated listener above */ }
